@@ -30,3 +30,26 @@
     transform: rotate(360deg);
   }
 }
+
+.Product-card {
+  float: left;
+  width: 30%;
+  padding-bottom: 15px;
+}
+
+.Product-price {
+  font-size: .8em;
+}
+
+.Product-title {
+  font-size: 1em;
+}
+
+.Product-information {
+  
+}
+
+.Product-image {
+  height: 50%;
+  width: 50%;
+}

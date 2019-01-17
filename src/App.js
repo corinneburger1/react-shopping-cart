@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
+import PropTypes from 'prop-types';
 
 class ProductInformation extends React.Component {
   render() {
@@ -15,14 +16,13 @@ class ProductInformation extends React.Component {
 }
 
 class AddToCartButton extends React.Component {
-  state = {
-    amountInCart: 0
-  };
+  addToCart(event) {
+    this.props.callback(this.props.product.title);
+  }
 
   render() {
-    const product = this.props.product;
     return (
-      <button class="Add-to-cart-button">Add to Cart</button>
+      <button class="Add-to-cart-button" onClick={this.addToCart.bind(this)}>Add to Cart</button>
     );
   }
 }
@@ -34,7 +34,17 @@ class ProductCard extends React.Component {
       <div class="Product-card">
         <img class="Product-image" src={require(`./static/products/${product.sku}_1.jpg`)}/>
         <ProductInformation product={this.props.product}/>
-        <AddToCartButton product={this.props.product} />
+        <AddToCartButton callback={this.props.callback} product={this.props.product} />
+      </div>
+    );
+  }
+}
+
+class CartItem extends React.Component {
+  render() {
+    return (
+      <div>
+        {this.props.title + ': ' + this.props.count}
       </div>
     );
   }
@@ -48,7 +58,6 @@ class Cart extends React.Component {
 
   state = {
     cartIsOpen: false,
-    cartCount: 0
   };
 
   handleClick = (event) => {   
@@ -58,10 +67,18 @@ class Cart extends React.Component {
   };
 
   render() {
+    const cartContents = this.props.cartContents;
+    var items = []
+    Object.keys(cartContents).forEach(function(key) {
+      items.push(<CartItem title={key} count={cartContents[key]}/>)
+    });
+
     return (
       <div class={(this.state.cartIsOpen ? 'Cart-open' : 'Cart-closed')} onClick={() => this.handleClick()}>
         <img class="Cart-image" src={require(`./static/bag-icon.png`)}/>
-        <span class="Cart-count">{this.state.cartCount}</span>
+        <span class="Cart-count">{this.props.productsInCart}</span>
+        <ul class={(this.state.cartIsOpen ? 'Cart-info-visible' : 'Cart-info-hidden')}>{items}</ul>
+        <button class={(this.state.cartIsOpen ? 'Cart-info-visible' : 'Cart-info-hidden')}>Checkout</button>
       </div>
     );
   }
@@ -72,20 +89,12 @@ class ProductTable extends Component {
   render() {
     const products = this.props.products;
     const gallery = products ? products.map(product => (
-      <ProductCard product={product}/>
+      <ProductCard callback={this.props.callback} product={product}/>
     )) : (<div>No Data</div>);
-    console.log(gallery);
+    
     return(
       <ul class="Product-table">{gallery}</ul>
     )
-  }
-}
-
-function addCartItem(productDict, productName) {
-  if(productDict[productName]){
-    productDict[productName] += 1;
-  } else {
-    productDict[productName] = 1;
   }
 }
 
@@ -96,13 +105,18 @@ class App extends Component {
     super(props)
     this.state = {
       productList: null,
-      productsInCart: {},
+      productsInCart: 0,
+      cartContents: {}
     }
   }
 
-  handleAddToCart = (event, productName) => {
+  addToCart(productName) {
+    console.log(productName)
+    var dict = this.state.cartContents;
+    dict[productName] ? dict[productName] += 1 : dict[productName] = 1;
     this.setState({
-      productsInCart: addCartItem(this.state.productsInCart, productName)
+      productsInCart: this.state.productsInCart + 1,
+      cartContents: dict
     });
   };
 
@@ -116,8 +130,8 @@ class App extends Component {
 
     return (
       <div>
-        <ProductTable products={this.state.productList} />
-        <Cart />
+        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents}/>
+        <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)}/>
       </div>
     );
   }

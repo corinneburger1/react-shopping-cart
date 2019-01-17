@@ -69,8 +69,6 @@
 
 .Product-table {
   float: left;
-  width: 1000px;
-  max-width: 80%;
 }
 
 .Cart-closed {
@@ -86,8 +84,6 @@
   background-color: lightblue;
   margin: 15px;
   padding: 5px;
-  height: 100px;
-  width: 100px;
   border-radius: 2px;
 }
 
@@ -107,4 +103,11 @@
 .Cart:hover {
   background-color: lightcoral;
   cursor: pointer;
+}
+
+.Cart-info-hidden {
+  display: none;
+}
+
+.Cart-info-visible {
 }

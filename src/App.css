@@ -60,13 +60,13 @@
   max-height: 200px;
 }
 
-.Add-to-cart-button {
+.Button {
   background-color: lightcoral;
   border-radius: 2px;
   border: none;
 }
 
-.Add-to-cart-button:hover {
+.Button:hover {
   cursor: pointer;
   background-color: lightblue;
 }
@@ -116,9 +116,10 @@
   cursor: pointer;
 }
 
-.Cart-info-hidden {
+.Hidden {
   display: none;
 }
 
-.Cart-info-visible {
+.Visible {
+
 }

@@ -22,7 +22,7 @@ class AddToCartButton extends React.Component {
 
   render() {
     return (
-      <button class="Add-to-cart-button" onClick={this.addToCart.bind(this)}>Add to Cart</button>
+      <button class="Button" onClick={this.addToCart.bind(this)}>Add to Cart</button>
     );
   }
 }
@@ -41,9 +41,15 @@ class ProductCard extends React.Component {
 }
 
 class CartItem extends React.Component {
+  removeFromCart(event) {
+    this.props.callback(this.props.title);
+    console.log("hello");
+  }
+
   render() {
     return (
       <div>
+        <button class="Button" onClick={this.removeFromCart.bind(this)}>-</button>
         {this.props.title + ': ' + this.props.count}
       </div>
     );
@@ -68,17 +74,20 @@ class Cart extends React.Component {
 
   render() {
     const cartContents = this.props.cartContents;
+    var callback = this.props.callback;
     var items = []
     Object.keys(cartContents).forEach(function(key) {
-      items.push(<CartItem title={key} count={cartContents[key]}/>)
+      if(cartContents[key] > 0) {
+        items.push(<CartItem callback={callback} title={key} count={cartContents[key]}/>);
+      }
     });
 
     return (
-      <div class={(this.state.cartIsOpen ? 'Cart-open' : 'Cart-closed')} onClick={() => this.handleClick()}>
-        <img class="Cart-image" src={require(`./static/bag-icon.png`)}/>
+      <div class={(this.state.cartIsOpen ? 'Cart-open' : 'Cart-closed')}>
+        <img class="Cart-image" src={require(`./static/bag-icon.png`)} onClick={() => this.handleClick()}/>
         <span class="Cart-count">{this.props.productsInCart}</span>
-        <ul class={(this.state.cartIsOpen ? 'Cart-info-visible' : 'Cart-info-hidden')}>{items}</ul>
-        <button class={(this.state.cartIsOpen ? 'Cart-info-visible' : 'Cart-info-hidden')}>Checkout</button>
+        <ul class={(this.state.cartIsOpen ? 'Visible' : 'Hidden')}>{items}</ul>
+        <button class={(this.state.cartIsOpen ? 'Visible Button' : 'Hidden')}>Checkout</button>
       </div>
     );
   }
@@ -120,6 +129,16 @@ class App extends Component {
     });
   };
 
+  removeFromCart(productName) {
+    console.log(productName)
+    var dict = this.state.cartContents;
+    dict[productName] -= 1;
+    this.setState({
+      productsInCart: this.state.productsInCart - 1,
+      cartContents: dict
+    });
+  };
+
   componentDidMount() {
     import("./products.json")
     .then(json => this.setState({productList: json.default.products}))
@@ -131,7 +150,7 @@ class App extends Component {
     return (
       <div class="App-area">
         <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)}/>
-        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents}/>
+        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)}/>
       </div>
     );
   }

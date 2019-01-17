@@ -31,6 +31,10 @@
   }
 }
 
+.App-area {
+  display: inline-block;
+}
+
 .Product-card {
   float: left;
   width: 200px;
@@ -68,11 +72,16 @@
 }
 
 .Product-table {
-  float: left;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
 }
 
 .Cart-closed {
-  float: right;
+  position: absolute;
+  top: 0px;
+  right: 0px;
   background-color: lightblue;
   margin: 15px;
   padding: 5px;
@@ -80,7 +89,9 @@
 }
 
 .Cart-open {
-  float: right;
+  position: absolute;
+  top: 0px;
+  right: 0px;
   background-color: lightblue;
   margin: 15px;
   padding: 5px;

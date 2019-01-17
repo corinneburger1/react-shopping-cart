@@ -129,9 +129,9 @@ class App extends Component {
     let my_json = {}
 
     return (
-      <div>
-        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents}/>
+      <div class="App-area">
         <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)}/>
+        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents}/>
       </div>
     );
   }

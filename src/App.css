@@ -68,7 +68,7 @@
 
 .Button:hover {
   cursor: pointer;
-  background-color: lightblue;
+  background-color: rgb(238, 69, 69);
 }
 
 .Product-table {

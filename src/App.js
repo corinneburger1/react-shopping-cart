@@ -39,10 +39,8 @@ class AddToCartButton extends React.Component {
   render() {
     const sizes = this.props.product.availableSizes;
     const sizeGallery = [];
-    console.log(this.props.product.title);
     for(var i = 0; i < sizes.length; i++){
       var size = sizes[i];
-      console.log(size);
       if(this.props.catalog && this.props.catalog[size]){
         sizeGallery.push(
           <label class="radio-inline available">

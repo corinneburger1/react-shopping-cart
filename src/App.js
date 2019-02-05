@@ -104,7 +104,7 @@ class Cart extends React.Component {
       <div class={(this.state.cartIsOpen ? 'Cart-open Hover' : 'Cart-closed Hover')}>
         <img class="Cart-image" src={require(`./static/bag-icon.png`)} onClick={() => this.handleClick()}/>
         <span class="Cart-count">{this.props.productsInCart}</span>
-        <ul class={(this.state.cartIsOpen ? 'Visible' : 'Hidden')}>{items}</ul>
+        <div class={(this.state.cartIsOpen ? 'Visible' : 'Hidden')}>{items}</div>
         <button class={(this.state.cartIsOpen ? 'Visible Button' : 'Hidden')}>Checkout</button>
       </div>
     );
@@ -114,13 +114,78 @@ class Cart extends React.Component {
 
 class ProductTable extends Component {
   render() {
+    function validSizes(product, sizes) {
+      for(var i = 0; i < product.availableSizes.length; i++){
+        if(sizes[product.availableSizes[i]] == 1) {
+          return true;
+        }
+      }
+      return false;
+    } 
+
     const products = this.props.products;
-    const gallery = products ? products.map(product => (
-      <ProductCard callback={this.props.callback} product={product}/>
-    )) : (<div>No Data</div>);
+    var gallery;
+    var sizesSelected = 0;
+    const selectedSizes = this.props.selectedSizes;
+    Object.keys(selectedSizes).forEach(function(size){
+      sizesSelected += selectedSizes[size];
+    });
+    if(products && sizesSelected > 0) {
+      gallery = products.filter(product => (
+        validSizes(product, selectedSizes)
+      )).map(product => (
+        <ProductCard callback={this.props.callback} product={product}/>
+      ));
+    } else if(products){
+      gallery = products.map(product => (
+        <ProductCard callback={this.props.callback} product={product}/>
+      ));
+    } else {
+      gallery = (<div>No Data</div>);
+    }
+    
     
     return(
-      <ul class="Product-table">{gallery}</ul>
+      <div class="Product-table">{gallery}</div>
+    )
+  }
+}
+
+
+class SizeOption extends Component {
+  toggleSize(event) {
+    this.props.callback(this.props.size);
+    console.log("clicked");
+  }
+
+  render() {
+    var css;
+    if(this.props.selected == 1){
+      css = "size-selected";
+    } else {
+      css =  "size";
+    }
+    return (
+      <div class={css} onClick={this.toggleSize.bind(this)}>
+        {this.props.size}
+      </div>
+    );
+  }
+}
+
+class SizeOptions extends Component {
+
+  render() {
+    var sizes = [];
+    const selectedSizes = this.props.selectedSizes;
+    var callback = this.props.callback
+    Object.keys(selectedSizes).forEach(function(size){
+      sizes.push(<SizeOption callback={callback} size={size} selected={selectedSizes[size]} />);
+    });
+    return(
+    <div class="sizes">
+      {sizes}
+    </div>
     )
   }
 }
@@ -133,7 +198,16 @@ class App extends Component {
     this.state = {
       productList: null,
       productsInCart: 0,
-      cartContents: {}
+      cartContents: {},
+      selectedSizes: {
+        "XS": 0,
+        "S": 0,
+        "M": 0,
+        "ML": 0,
+        "L": 0,
+        "XL": 0,
+        "XXL": 0,
+      }
     }
   }
 
@@ -161,9 +235,21 @@ class App extends Component {
     });
   };
 
+  toggleSize(size) {
+    var sizes = this.state.selectedSizes;
+    if(sizes[size] == 1){
+      sizes[size] = 0;
+    } else {
+      sizes[size] = 1;
+    }
+    this.setState({
+      selectedSizes: sizes
+    })
+  };
+
   componentDidMount() {
     import("./products.json")
-    .then(json => this.setState({productList: json.default.products}))
+    .then(json => this.setState({productList: json.default.products}));
   }
 
   render() {
@@ -171,7 +257,8 @@ class App extends Component {
 
     return (
       <div class="App-area">
-        <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)}/>
+        <SizeOptions callback={this.toggleSize.bind(this)} selectedSizes={this.state.selectedSizes}/>
+        <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes}/>
         <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} products={this.state.productList}/>
       </div>
     );

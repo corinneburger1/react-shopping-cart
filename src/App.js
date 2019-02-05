@@ -41,7 +41,7 @@ class AddToCartButton extends React.Component {
     const sizeGallery = [];
     for(var i = 0; i < sizes.length; i++){
       var size = sizes[i];
-      if(this.props.catalog && this.props.catalog[size]){
+      if(this.props.catalog && this.props.catalog[size] && this.props.catalog[size] > 0){
         sizeGallery.push(
           <label class="radio-inline available">
             <input type="radio" name="optradio" id={this.props.product.title + size} checked/>{size}
@@ -111,6 +111,10 @@ class Cart extends React.Component {
     });
   };
 
+  checkout = (event) => {
+    this.props.checkout();
+  }
+
   render() {
     const cartContents = this.props.cartContents;
     var callback = this.props.callback;
@@ -128,7 +132,7 @@ class Cart extends React.Component {
         <img class="Cart-image" src={require(`./static/bag-icon.png`)} onClick={() => this.handleClick()}/>
         <span class="Cart-count">{this.props.productsInCart}</span>
         <div class={(this.state.cartIsOpen ? 'Visible' : 'Hidden')}>{items}</div>
-        <button class={(this.state.cartIsOpen ? 'Visible Button' : 'Hidden')}>Checkout</button>
+        <button class={(this.state.cartIsOpen ? 'Visible Button' : 'Hidden')} onClick={this.checkout.bind(this)} >Checkout</button>
       </div>
     );
   }
@@ -156,11 +160,11 @@ class ProductTable extends Component {
       gallery = products.filter(product => (
         validSizes(product, selectedSizes)
       )).map(product => (
-        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title]}/>
+        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title] ? this.props.catalog[product.title] : null}/>
       ));
     } else if(products){
       gallery = products.map(product => (
-        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title]}/>
+        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title] ? this.props.catalog[product.title] : null}/>
       ));
     } else {
       gallery = (<div>No Data</div>);
@@ -296,6 +300,50 @@ class App extends Component {
     }
   };
 
+  checkout() {
+    const catalog = {}
+    firebase.database().ref('Catalog/').once('value', function (snapshot) {
+      if(snapshot.val()){
+        Object.keys(snapshot.val()).forEach(function(product) {
+          const productCatalog = {};
+          Object.keys(snapshot.val()[product]).forEach(function(size){
+            productCatalog[size] = snapshot.val()[product][size]["Count"];
+          });
+          catalog[product] = productCatalog;
+        });
+      }
+    }).then(data => {
+      this.setState({catalog: catalog});
+      const cartContents = this.state.cartContents;
+      Object.keys(cartContents).forEach(function(product) {
+        Object.keys(cartContents[product]).forEach(function(size){
+          var desired = cartContents[product][size];
+          var available = catalog[product] && catalog[product][size] ? catalog[product][size] : 0;
+          if(desired == 0){
+          } else if(available == 0) {
+            alert(size + " " + product + " is no longer available but the rest of your order will be processed.");
+          } else if(desired > available){
+            alert("Only " + available + " " + size + " " + product + " are available so your order has been updated.");
+            if(available > 0){
+              firebase.database().ref('Catalog/' + product + '/' + size + '/').remove();
+              catalog[product][size] = 0;
+            }
+          } else if(desired == available) {
+            firebase.database().ref('Catalog/' + product + '/' + size + '/').remove();
+            catalog[product][size] = 0;
+          } else {
+            firebase.database().ref('Catalog/' + product + '/' + size + '/').set({
+              Count: available - desired
+            });
+            catalog[product][size] = available - desired;
+          }
+        });
+      });
+      this.setState({cartContents: {}, productsInCart: 0, catalog: catalog});
+      firebase.database().ref('CartItems/' + this.state.user.uid + '/').remove();
+    });
+  };
+
   toggleSize(size) {
     var sizes = this.state.selectedSizes;
     if(sizes[size] == 1){
@@ -324,7 +372,7 @@ class App extends Component {
               const productCart = {};
               Object.keys(snapshot.val()[product]).forEach(function(size){
                 productCart[size] = snapshot.val()[product][size]["count"];
-                count++;
+                count += snapshot.val()[product][size]["count"];
               });
               cart[product] = productCart;
             });
@@ -370,7 +418,7 @@ class App extends Component {
         <div class="App-area">
           <SizeOptions callback={this.toggleSize.bind(this)} selectedSizes={this.state.selectedSizes}/>
           <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes} catalog={this.state.catalog}/>
-          <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} products={this.state.productList}/>
+          <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} checkout={this.checkout.bind(this)} products={this.state.productList}/>
           <button class="sign-out" onClick={()=>firebase.auth().signOut()}>Sign out!</button>
         </div>
       );

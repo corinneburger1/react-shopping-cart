@@ -2,6 +2,15 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import PropTypes from 'prop-types';
+import firebase from "firebase";
+import StyledFirebaseAuth from "react-firebaseui/StyledFirebaseAuth";
+
+firebase.initializeApp({
+  apiKey: "AIzaSyARTgcYyzgmzGnZ3GsD4ibvsW_sustI894",
+  authDomain: "react-shopping-cart-8cf88.firebaseapp.com",
+  databaseURL: "https://react-shopping-cart-8cf88.firebaseio.com/",
+  projectId: "react-shopping-cart-8cf88"
+})
 
 class ProductInformation extends React.Component {
   render() {
@@ -66,7 +75,7 @@ class CartItem extends React.Component {
     return (
       <div>
         <button class="Button" onClick={this.removeFromCart.bind(this)}>-</button>
-        {this.props.size + " " + this.props.title + ': ' + this.props.count}
+        {" " + this.props.size + " " + this.props.title + ": " + this.props.count}
       </div>
     );
   }
@@ -155,7 +164,6 @@ class ProductTable extends Component {
 class SizeOption extends Component {
   toggleSize(event) {
     this.props.callback(this.props.size);
-    console.log("clicked");
   }
 
   render() {
@@ -191,11 +199,11 @@ class SizeOptions extends Component {
 }
 
 class App extends Component {
-
   constructor(props) 
   {
     super(props)
     this.state = {
+      isSignedIn: false,
       productList: null,
       productsInCart: 0,
       cartContents: {},
@@ -207,7 +215,8 @@ class App extends Component {
         "L": 0,
         "XL": 0,
         "XXL": 0,
-      }
+      },
+      user: null
     }
   }
 
@@ -224,6 +233,9 @@ class App extends Component {
       productsInCart: this.state.productsInCart + 1,
       cartContents: dict
     });
+    firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').set({
+      count: dict[productName][size]
+    });
   };
 
   removeFromCart(productName, size) {
@@ -233,6 +245,13 @@ class App extends Component {
       productsInCart: this.state.productsInCart - 1,
       cartContents: dict
     });
+    if(dict[productName][size] > 0){
+      firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').set({
+        count: dict[productName][size]
+      });
+    } else {
+      firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').remove();
+    }
   };
 
   toggleSize(size) {
@@ -250,18 +269,65 @@ class App extends Component {
   componentDidMount() {
     import("./products.json")
     .then(json => this.setState({productList: json.default.products}));
+    
+    firebase.auth().onAuthStateChanged(user => {
+      this.setState({isSignedIn:!!user, user:user});
+
+      const cart = {}
+      var count = 0;
+      if(this.state.user) {
+        console.log(cart);
+  
+        firebase.database().ref('CartItems/' + this.state.user.uid + '/').once('value', function (snapshot) {
+          if(snapshot.val()){
+            Object.keys(snapshot.val()).forEach(function(product) {
+              const productCart = {};
+              Object.keys(snapshot.val()[product]).forEach(function(size){
+                productCart[size] = snapshot.val()[product][size]["count"];
+                count++;
+                console.log(count);
+              });
+              cart[product] = productCart;
+            });
+          }
+        }).then(data => {
+          this.setState({cartContents: cart, productsInCart: count});
+        });
+      }
+      console.log(cart);
+
+
+
+    });
+  }
+
+  uiConfig = {
+    signInFlow: "popup",
+    signInOptions: [
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID
+    ],
+    callbacks: {
+      signInSuccessWithAuthResult: () => false
+    }
   }
 
   render() {
     let my_json = {}
-
-    return (
-      <div class="App-area">
-        <SizeOptions callback={this.toggleSize.bind(this)} selectedSizes={this.state.selectedSizes}/>
-        <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes}/>
-        <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} products={this.state.productList}/>
-      </div>
-    );
+    
+    if(this.state.isSignedIn){
+      return (
+        <div class="App-area">
+          <SizeOptions callback={this.toggleSize.bind(this)} selectedSizes={this.state.selectedSizes}/>
+          <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes}/>
+          <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} products={this.state.productList}/>
+          <button class="sign-out" onClick={()=>firebase.auth().signOut()}>Sing out!</button>
+        </div>
+      );
+    } else {
+      return (
+        <StyledFirebaseAuth uiConfig={this.uiConfig} firebaseAuth={firebase.auth()}/>
+      )
+    }
   }
 }
 

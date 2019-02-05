@@ -27,20 +27,36 @@ class ProductInformation extends React.Component {
 class AddToCartButton extends React.Component {
   addToCart(event) {
     var selectedSize = "";
+    var available = false;
     for (var i = 0; i < this.props.product.availableSizes.length; i++){
       var cur = this.props.product.availableSizes[i];
       if(document.getElementById(this.props.product.title + cur).checked) selectedSize = cur;
     }
+    
     this.props.callback(this.props.product.title, selectedSize);
   }
 
   render() {
     const sizes = this.props.product.availableSizes;
-    const sizeGallery = sizes ? sizes.map(size => (
-        <label class="radio-inline">
-          <input type="radio" name="optradio" id={this.props.product.title + size} checked/>{size}
-        </label>
-    )) : (<div>No Data</div>);
+    const sizeGallery = [];
+    console.log(this.props.product.title);
+    for(var i = 0; i < sizes.length; i++){
+      var size = sizes[i];
+      console.log(size);
+      if(this.props.catalog && this.props.catalog[size]){
+        sizeGallery.push(
+          <label class="radio-inline available">
+            <input type="radio" name="optradio" id={this.props.product.title + size} checked/>{size}
+          </label>
+        );
+      } else {
+        sizeGallery.push(
+          <label class="radio-inline unavailable">
+            <input type="radio" name="optradio" id={this.props.product.title + size} checked/>{size}
+          </label>
+        );
+      }
+    }
 
     return (
       <div>
@@ -60,7 +76,7 @@ class ProductCard extends React.Component {
       <div class="Product-card">
         <img class="Product-image" src={require(`./static/products/${product.sku}_1.jpg`)}/>
         <ProductInformation product={this.props.product}/>
-        <AddToCartButton callback={this.props.callback} product={this.props.product} />
+        <AddToCartButton callback={this.props.callback} product={this.props.product} catalog={this.props.catalog}/>
       </div>
     );
   }
@@ -130,8 +146,7 @@ class ProductTable extends Component {
         }
       }
       return false;
-    } 
-
+    }
     const products = this.props.products;
     var gallery;
     var sizesSelected = 0;
@@ -143,11 +158,11 @@ class ProductTable extends Component {
       gallery = products.filter(product => (
         validSizes(product, selectedSizes)
       )).map(product => (
-        <ProductCard callback={this.props.callback} product={product}/>
+        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title]}/>
       ));
     } else if(products){
       gallery = products.map(product => (
-        <ProductCard callback={this.props.callback} product={product}/>
+        <ProductCard callback={this.props.callback} product={product} catalog={this.props.catalog[product.title]}/>
       ));
     } else {
       gallery = (<div>No Data</div>);
@@ -207,6 +222,7 @@ class App extends Component {
       productList: null,
       productsInCart: 0,
       cartContents: {},
+      catalog: {},
       selectedSizes: {
         "XS": 0,
         "S": 0,
@@ -221,21 +237,49 @@ class App extends Component {
   }
 
   addToCart(productName, size) {
-    var dict = this.state.cartContents;
-    const productEntry = {};
-    productEntry[size] = 1;
-    if(dict[productName]){
-      dict[productName][size] ? dict[productName][size] += 1 : dict[productName][size] = 1;
+    if(this.state.catalog[productName] && this.state.catalog[productName][size]){
+      if(this.state.cartContents[productName] && this.state.cartContents[productName][size]){
+        var reserved = this.state.cartContents[productName][size];
+        if(this.state.catalog[productName][size] - this.state.cartContents[productName][size] > 0){
+          var dict = this.state.cartContents;
+          const productEntry = {};
+          productEntry[size] = 1;
+          if(dict[productName]){
+            dict[productName][size] ? dict[productName][size] += 1 : dict[productName][size] = 1;
+          } else {
+            dict[productName] = productEntry;
+          }
+          this.setState({
+            productsInCart: this.state.productsInCart + 1,
+            cartContents: dict
+          });
+          firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').set({
+            count: dict[productName][size]
+          });
+        } else {
+          alert("You have already added all available items of this size to your cart.")
+        }
+      } else {
+        var dict = this.state.cartContents;
+        const productEntry = {};
+        productEntry[size] = 1;
+        if(dict[productName]){
+          dict[productName][size] ? dict[productName][size] += 1 : dict[productName][size] = 1;
+        } else {
+          dict[productName] = productEntry;
+        }
+        this.setState({
+          productsInCart: this.state.productsInCart + 1,
+          cartContents: dict
+        });
+        firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').set({
+          count: dict[productName][size]
+        });
+      }
+      
     } else {
-      dict[productName] = productEntry;
+      alert("Size not available.");
     }
-    this.setState({
-      productsInCart: this.state.productsInCart + 1,
-      cartContents: dict
-    });
-    firebase.database().ref('CartItems/' + this.state.user.uid + '/' + productName + '/' + size + '/').set({
-      count: dict[productName][size]
-    });
   };
 
   removeFromCart(productName, size) {
@@ -275,9 +319,7 @@ class App extends Component {
 
       const cart = {}
       var count = 0;
-      if(this.state.user) {
-        console.log(cart);
-  
+      if(this.state.user) {  
         firebase.database().ref('CartItems/' + this.state.user.uid + '/').once('value', function (snapshot) {
           if(snapshot.val()){
             Object.keys(snapshot.val()).forEach(function(product) {
@@ -285,7 +327,6 @@ class App extends Component {
               Object.keys(snapshot.val()[product]).forEach(function(size){
                 productCart[size] = snapshot.val()[product][size]["count"];
                 count++;
-                console.log(count);
               });
               cart[product] = productCart;
             });
@@ -294,9 +335,21 @@ class App extends Component {
           this.setState({cartContents: cart, productsInCart: count});
         });
       }
-      console.log(cart);
 
-
+      const catalog = {}
+      firebase.database().ref('Catalog/').once('value', function (snapshot) {
+        if(snapshot.val()){
+          Object.keys(snapshot.val()).forEach(function(product) {
+            const productCatalog = {};
+            Object.keys(snapshot.val()[product]).forEach(function(size){
+              productCatalog[size] = snapshot.val()[product][size]["Count"];
+            });
+            catalog[product] = productCatalog;
+          });
+        }
+      }).then(data => {
+        this.setState({catalog: catalog});
+      });
 
     });
   }
@@ -318,9 +371,9 @@ class App extends Component {
       return (
         <div class="App-area">
           <SizeOptions callback={this.toggleSize.bind(this)} selectedSizes={this.state.selectedSizes}/>
-          <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes}/>
+          <ProductTable products={this.state.productList} callback={this.addToCart.bind(this)} selectedSizes={this.state.selectedSizes} catalog={this.state.catalog}/>
           <Cart productsInCart={this.state.productsInCart} cartContents={this.state.cartContents} callback={this.removeFromCart.bind(this)} products={this.state.productList}/>
-          <button class="sign-out" onClick={()=>firebase.auth().signOut()}>Sing out!</button>
+          <button class="sign-out" onClick={()=>firebase.auth().signOut()}>Sign out!</button>
         </div>
       );
     } else {

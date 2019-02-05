@@ -166,3 +166,11 @@
   margin: 5px;
   margin-right: 20px;
 }
+
+.available {
+  color: green;
+}
+
+.unavailable {
+  color: red;
+}
